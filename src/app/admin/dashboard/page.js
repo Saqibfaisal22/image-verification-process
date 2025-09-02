@@ -6,6 +6,7 @@ import { auth, db } from '../../../firebase/config';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
+import GenerateLinkModal from '../../../components/GenerateLinkModal';
 
 function CreateUserForm({ currentUser }) {
   const [email, setEmail] = useState('');
@@ -92,6 +93,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('links');
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
 
   const handleTabClick = (tab) => {
@@ -146,7 +148,15 @@ export default function Dashboard() {
     return () => unsubscribeUsers();
   }, [user, fetchLinksAndImages]);
 
-  const generateLink = async () => {
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const generateLink = async (formData) => {
     setError(null);
     if (!user) {
       setError('You must be logged in to generate a link.');
@@ -158,8 +168,10 @@ export default function Dashboard() {
       const response = await fetch('/api/generate-link', {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`,
         },
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
@@ -168,6 +180,7 @@ export default function Dashboard() {
       }
 
       fetchLinksAndImages(user);
+      handleCloseModal();
     } catch (error) {
       setError(error.message);
     }
@@ -194,8 +207,10 @@ export default function Dashboard() {
         </div>
       )}
       <button onClick={handleLogout} style={{ padding: '10px', marginBottom: '20px' }}>Logout</button>
-      <button onClick={generateLink} style={{ padding: '10px', marginBottom: '20px', marginLeft: '10px' }}>Generate Link</button>
+      <button onClick={handleOpenModal} style={{ padding: '10px', marginBottom: '20px', marginLeft: '10px' }}>Generate Link</button>
       {error && <p style={{ color: 'red' }}>{error}</p>}
+
+      <GenerateLinkModal isOpen={isModalOpen} onClose={handleCloseModal} onSubmit={generateLink} />
 
       {isAdmin && <CreateUserForm currentUser={user} />}
 

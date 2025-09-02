@@ -10,7 +10,7 @@ const subscriptionTiers = {
 
 export async function POST(request) {
   const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
-  console.log('Received ID Token:', idToken);
+  const { name, email, phone, logoLink, bankName } = await request.json();
 
   if (!idToken) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -19,9 +19,7 @@ export async function POST(request) {
   try {
     const decodedToken = await authAdmin.verifyIdToken(idToken);
     const userId = decodedToken.uid;
-    const email = decodedToken.email;
     
-    console.log('Decoded Token:', userId, email);
     const userRef = db.collection('users').doc(userId);
     const userSnap = await userRef.get();
 
@@ -33,7 +31,7 @@ export async function POST(request) {
       const resetAt = new Date(now.getFullYear(), now.getMonth() + 1, 1);
       userData = {
         userId,
-        email,
+        email: decodedToken.email,
         tier: 'free',
         linksThisMonth: 0,
         resetAt: admin.firestore.Timestamp.fromDate(resetAt),
@@ -65,7 +63,12 @@ export async function POST(request) {
       status: 'unused',
       createdAt: new Date(),
       images: [],
-      userId: userId, // Add userId to the link document
+      userId: userId,
+      name,
+      email,
+      phone,
+      logoLink,
+      bankName,
     });
 
     // Increment the user's count

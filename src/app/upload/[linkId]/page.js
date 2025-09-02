@@ -8,8 +8,8 @@ import { useParams } from 'next/navigation';
 
 export default function UploadPage() {
   const { linkId } = useParams();
+  const [linkData, setLinkData] = useState(null);
   const [linkStatus, setLinkStatus] = useState('loading');
-  const [userId, setUserId] = useState(null);
   const [image1, setImage1] = useState(null);
   const [image2, setImage2] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -22,7 +22,7 @@ export default function UploadPage() {
 
     if (linkSnap.exists() && linkSnap.data().status === 'unused') {
       setLinkStatus('valid');
-      setUserId(linkSnap.data().userId); // Set the userId
+      setLinkData(linkSnap.data());
     } else {
       setLinkStatus('expired');
     }
@@ -52,7 +52,7 @@ export default function UploadPage() {
       formData.append('image1', image1);
       formData.append('image2', image2);
       formData.append('linkId', linkId);
-      formData.append('userId', userId); // Add userId to the form data
+      formData.append('userId', linkData.userId);
 
       const response = await fetch('/api/upload-cloudinary', {
         method: 'POST',
@@ -78,7 +78,7 @@ export default function UploadPage() {
     } finally {
       setUploading(false);
     }
-  }, [image1, image2, linkId, userId]);
+  }, [image1, image2, linkId, linkData]);
 
   useEffect(() => {
     if (image1 && image2) {
@@ -100,6 +100,15 @@ export default function UploadPage() {
 
   return (
     <div style={{ padding: '20px' }}>
+      {linkData && (
+        <div style={{ marginBottom: '20px' }}>
+          {linkData.logoLink && <img src={linkData.logoLink} alt="Logo" style={{ maxWidth: '150px', marginBottom: '20px' }} />}
+          <h1>{linkData.name}</h1>
+          <p>Email: {linkData.email}</p>
+          <p>Phone: {linkData.phone}</p>
+          <p>Bank: {linkData.bankName}</p>
+        </div>
+      )}
       <h1>Upload Photos</h1>
       <p>Please capture two photos.</p>
       <div style={{ marginBottom: '20px' }}>
