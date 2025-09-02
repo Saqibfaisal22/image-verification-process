@@ -1,26 +1,34 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { signInWithEmailAndPassword } from "firebase/auth"
-import { auth } from "../../firebase/config"
-import { useRouter } from "next/navigation"
+import { useState } from 'react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '../../firebase/config';
+import { doc, getDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 export default function AdminLogin() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState(null)
-  const router = useRouter()
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const router = useRouter();
 
   const handleLogin = async (e) => {
-    e.preventDefault()
-    setError(null)
+    e.preventDefault();
+    setError(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password)
-      router.push("/admin/dashboard")
+      const { user } = await signInWithEmailAndPassword(auth, email, password);
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists() && userSnap.data().tier) {
+        router.push('/admin/dashboard');
+      } else {
+        router.push('/select-tier');
+      }
     } catch (error) {
-      setError(error.message)
+      setError(error.message);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
@@ -132,9 +140,9 @@ export default function AdminLogin() {
 
         {/* Footer */}
         <div className="text-center mt-6">
-          <p className="text-sm text-gray-500">Secure admin access • Protected by authentication</p>
+          <p className="text-sm text-gray-600">Don't have an account? <a href="/register" className="font-semibold text-blue-600 hover:underline">Register</a></p>
         </div>
       </div>
     </div>
-  )
+  );
 }

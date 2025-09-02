@@ -1,48 +1,48 @@
-"use client"
+'use client';
 
-import { useEffect, useState, useCallback } from "react"
-import { auth, db } from "../../../firebase/config"
-import { onAuthStateChanged, signOut } from "firebase/auth"
-import { collection, getDocs, onSnapshot, query, where } from "firebase/firestore"
-import { useRouter } from "next/navigation"
-import GenerateLinkModal from "../../../components/GenerateLinkModal"
+import { useEffect, useState, useCallback } from 'react';
+import { auth, db } from '../../../firebase/config';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { collection, getDocs, onSnapshot, query, where, doc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import GenerateLinkModal from '../../../components/GenerateLinkModal';
 
 function CreateUserForm({ currentUser }) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [tier, setTier] = useState("free")
-  const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [tier, setTier] = useState('free');
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
   const handleCreateUser = async (e) => {
-    e.preventDefault()
-    setError(null)
-    setSuccess(null)
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
 
     try {
-      const idToken = await currentUser.getIdToken()
-      const response = await fetch("/api/create-user", {
-        method: "POST",
+      const idToken = await currentUser.getIdToken();
+      const response = await fetch('/api/create-user', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({ email, password, tier }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create user")
+        throw new Error(data.error || 'Failed to create user');
       }
 
-      setSuccess(`User ${email} created successfully!`)
-      setEmail("")
-      setPassword("")
+      setSuccess(`User ${email} created successfully!`);
+      setEmail('');
+      setPassword('');
     } catch (err) {
-      setError(err.message)
+      setError(err.message);
     }
-  }
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-8">
@@ -95,113 +95,120 @@ function CreateUserForm({ currentUser }) {
 }
 
 export default function Dashboard() {
-  const [user, setUser] = useState(null)
-  const [userData, setUserData] = useState(null)
-  const [allUsers, setAllUsers] = useState([])
-  const [links, setLinks] = useState([])
-  const [images, setImages] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [activeTab, setActiveTab] = useState("links")
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const router = useRouter()
+  const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
+  const [links, setLinks] = useState([]);
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('links');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
 
   const handleTabClick = (tab) => {
-    setActiveTab(tab)
-  }
+    setActiveTab(tab);
+  };
 
   const fetchLinksAndImages = useCallback(async (currentUser) => {
-    const linksCollection = collection(db, "links")
-    let linksQuery = linksCollection
+    const linksCollection = collection(db, 'links');
+    let linksQuery = linksCollection;
 
-    if (currentUser.email !== "admin@gmail.com") {
-      linksQuery = query(linksCollection, where("userId", "==", currentUser.uid))
+    if (currentUser.email !== 'admin@gmail.com') {
+      linksQuery = query(linksCollection, where('userId', '==', currentUser.uid));
     }
 
-    const linksSnapshot = await getDocs(linksQuery)
-    const linksList = linksSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-    setLinks(linksList)
+    const linksSnapshot = await getDocs(linksQuery);
+    const linksList = linksSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    setLinks(linksList);
 
     const imagesList = linksList
-      .filter((link) => link.status === "used" && link.images)
-      .flatMap((link) => link.images.map((image) => ({ url: image, linkId: link.id })))
-    setImages(imagesList)
-  }, [])
+      .filter((link) => link.status === 'used' && link.images)
+      .flatMap((link) => link.images.map((image) => ({ url: image, linkId: link.id })));
+    setImages(imagesList);
+  }, []);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
-        setUser(user)
+        setUser(user);
       } else {
-        router.push("/admin")
+        router.push('/admin');
       }
-      setLoading(false)
-    })
-    return () => unsubscribeAuth()
-  }, [router])
+      setLoading(false);
+    });
+    return () => unsubscribeAuth();
+  }, [router]);
 
   useEffect(() => {
-    if (!user) return
+    if (!user) return;
 
-    fetchLinksAndImages(user)
-
-    const userRef = collection(db, "users")
-    const unsubscribeUsers = onSnapshot(userRef, (snapshot) => {
-      const usersList = snapshot.docs.map((doc) => doc.data())
-      setAllUsers(usersList)
-      const currentUserData = usersList.find((u) => u.userId === user.uid)
-      if (currentUserData) {
-        setUserData(currentUserData)
+    const userRef = doc(db, 'users', user.uid);
+    const unsubscribeUser = onSnapshot(userRef, (snapshot) => {
+      if (snapshot.exists() && snapshot.data().tier) {
+        setUserData(snapshot.data());
+        fetchLinksAndImages(user);
+      } else {
+        router.push('/select-tier');
       }
-    })
+    });
 
-    return () => unsubscribeUsers()
-  }, [user, fetchLinksAndImages])
+    const allUsersRef = collection(db, 'users');
+    const unsubscribeUsers = onSnapshot(allUsersRef, (snapshot) => {
+      const usersList = snapshot.docs.map((doc) => doc.data());
+      setAllUsers(usersList);
+    });
+
+    return () => {
+      unsubscribeUser();
+      unsubscribeUsers();
+    };
+  }, [user, fetchLinksAndImages, router]);
 
   const handleOpenModal = () => {
-    setIsModalOpen(true)
-  }
+    setIsModalOpen(true);
+  };
 
   const handleCloseModal = () => {
-    setIsModalOpen(false)
-  }
+    setIsModalOpen(false);
+  };
 
   const generateLink = async (formData) => {
-    setError(null)
+    setError(null);
     if (!user) {
-      setError("You must be logged in to generate a link.")
-      return
+      setError('You must be logged in to generate a link.');
+      return;
     }
 
     try {
-      const idToken = await user.getIdToken()
-      const response = await fetch("/api/generate-link", {
-        method: "POST",
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/generate-link', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify(formData),
-      })
+      });
 
       if (!response.ok) {
-        const { error } = await response.json()
-        throw new Error(error || "Failed to generate link")
+        const { error } = await response.json();
+        throw new Error(error || 'Failed to generate link');
       }
 
-      fetchLinksAndImages(user)
-      handleCloseModal()
+      fetchLinksAndImages(user);
+      handleCloseModal();
     } catch (error) {
-      setError(error.message)
+      setError(error.message);
     }
-  }
+  };
 
   const handleLogout = async () => {
-    await signOut(auth)
-    router.push("/admin")
-  }
+    await signOut(auth);
+    router.push('/admin');
+  };
 
-  if (loading) {
+  if (loading || !userData) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center space-x-2">
@@ -209,10 +216,10 @@ export default function Dashboard() {
           <span className="text-gray-600 font-medium">Loading dashboard...</span>
         </div>
       </div>
-    )
+    );
   }
 
-  const isAdmin = user && user.email === "admin@gmail.com"
+  const isAdmin = user && user.email === 'admin@gmail.com';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -258,7 +265,7 @@ export default function Dashboard() {
                   {" • "}
                   <span className="font-medium">{userData.linksThisMonth}</span> of{" "}
                   <span className="font-medium">
-                    {userData.tier === "free" ? 10 : userData.tier === "basic" ? 15 : 20}
+                    {userData.tier === 'free' ? 10 : userData.tier === 'basic' ? 15 : 20}
                   </span>{" "}
                   links used this month
                 </p>
@@ -307,9 +314,9 @@ export default function Dashboard() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                            u.tier === "premium"
+                            u.tier === 'premium'
                               ? "bg-purple-100 text-purple-800"
-                              : u.tier === "basic"
+                              : u.tier === 'basic'
                                 ? "bg-blue-100 text-blue-800"
                                 : "bg-gray-100 text-gray-800"
                           }`}
