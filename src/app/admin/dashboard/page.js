@@ -5,6 +5,7 @@ import { auth, db } from '../../../firebase/config';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, getDocs, onSnapshot, query, where, doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import GenerateLinkModal from '../../../components/GenerateLinkModal';
 
 function CreateUserForm({ currentUser }) {
@@ -421,9 +422,11 @@ export default function Dashboard() {
                     className="bg-gray-50 rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
                   >
                     <div className="aspect-square mb-3 overflow-hidden rounded-lg bg-white">
-                      <img
+                      <Image
                         src={image.url || "/placeholder.svg"}
                         alt={`Uploaded image ${index + 1}`}
+                        width={200}
+                        height={200}
                         className="w-full h-full object-cover"
                       />
                     </div>

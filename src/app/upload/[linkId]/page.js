@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { db } from "../../../firebase/config"
+import Image from 'next/image';
 import { useParams } from "next/navigation"
 
 export default function UploadPage() {
@@ -144,9 +145,11 @@ export default function UploadPage() {
               <div className="text-center mb-6">
                 {linkData.logoLink && (
                   <div className="mb-6">
-                    <img
+                    <Image
                       src={linkData.logoLink || "/placeholder.svg"}
                       alt="Logo"
+                      width={128}
+                      height={128}
                       className="max-w-32 h-auto mx-auto rounded-lg shadow-md"
                     />
                   </div>

@@ -140,7 +140,7 @@ export default function AdminLogin() {
 
         {/* Footer */}
         <div className="text-center mt-6">
-          <p className="text-sm text-gray-600">Don't have an account? <a href="/register" className="font-semibold text-blue-600 hover:underline">Register</a></p>
+          <p className="text-sm text-gray-600">Don&apos;t have an account? <a href="/register" className="font-semibold text-blue-600 hover:underline">Register</a></p>
         </div>
       </div>
     </div>
