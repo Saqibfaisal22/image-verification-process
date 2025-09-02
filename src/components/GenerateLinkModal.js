@@ -35,7 +35,7 @@ export default function GenerateLinkModal({ isOpen, onClose, onSubmit }) {
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 h-[80vh] overflow-y-auto">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Full Name</label>
