@@ -10,6 +10,7 @@ const subscriptionTiers = {
 
 export async function POST(request) {
   const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
+  console.log('Received ID Token:', idToken);
 
   if (!idToken) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -19,7 +20,8 @@ export async function POST(request) {
     const decodedToken = await authAdmin.verifyIdToken(idToken);
     const userId = decodedToken.uid;
     const email = decodedToken.email;
-
+    
+    console.log('Decoded Token:', userId, email);
     const userRef = db.collection('users').doc(userId);
     const userSnap = await userRef.get();
 
@@ -63,7 +65,7 @@ export async function POST(request) {
       status: 'unused',
       createdAt: new Date(),
       images: [],
-      createdBy: userId,
+      userId: userId, // Add userId to the link document
     });
 
     // Increment the user's count

@@ -13,8 +13,9 @@ export async function POST(request) {
   const image1 = formData.get('image1');
   const image2 = formData.get('image2');
   const linkId = formData.get('linkId');
+  const userId = formData.get('userId');
 
-  if (!image1 || !image2 || !linkId) {
+  if (!image1 || !image2 || !linkId || !userId) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
@@ -26,7 +27,7 @@ export async function POST(request) {
       return new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
-            folder: linkId,
+            folder: `${userId}/${linkId}`,
           },
           (error, result) => {
             if (error) {

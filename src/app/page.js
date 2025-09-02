@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -12,7 +13,7 @@ export default function HomePage() {
 
   return (
     <div>
-      <p>Redirecting to admin login...</p>
+      <p>Welcome to the image portal.</p>
     </div>
   );
 }

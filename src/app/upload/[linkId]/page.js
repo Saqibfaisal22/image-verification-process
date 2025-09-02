@@ -9,6 +9,7 @@ import { useParams } from 'next/navigation';
 export default function UploadPage() {
   const { linkId } = useParams();
   const [linkStatus, setLinkStatus] = useState('loading');
+  const [userId, setUserId] = useState(null);
   const [image1, setImage1] = useState(null);
   const [image2, setImage2] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -21,6 +22,7 @@ export default function UploadPage() {
 
     if (linkSnap.exists() && linkSnap.data().status === 'unused') {
       setLinkStatus('valid');
+      setUserId(linkSnap.data().userId); // Set the userId
     } else {
       setLinkStatus('expired');
     }
@@ -37,7 +39,7 @@ export default function UploadPage() {
     }
   };
 
-  const handleUpload = async () => {
+  const handleUpload = useCallback(async () => {
     if (!image1 || !image2) {
       alert('Please capture both photos.');
       return;
@@ -50,6 +52,7 @@ export default function UploadPage() {
       formData.append('image1', image1);
       formData.append('image2', image2);
       formData.append('linkId', linkId);
+      formData.append('userId', userId); // Add userId to the form data
 
       const response = await fetch('/api/upload-cloudinary', {
         method: 'POST',
@@ -75,7 +78,7 @@ export default function UploadPage() {
     } finally {
       setUploading(false);
     }
-  };
+  }, [image1, image2, linkId, userId]);
 
   useEffect(() => {
     if (image1 && image2) {

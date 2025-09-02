@@ -4,7 +4,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { auth, db } from '../../../firebase/config';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 function CreateUserForm({ currentUser }) {
@@ -88,15 +88,32 @@ export default function Dashboard() {
   const [userData, setUserData] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
   const [links, setLinks] = useState([]);
+  const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('links');
   const router = useRouter();
 
-  const fetchLinks = useCallback(async () => {
+  const handleTabClick = (tab) => {
+    setActiveTab(tab);
+  };
+
+  const fetchLinksAndImages = useCallback(async (currentUser) => {
     const linksCollection = collection(db, 'links');
-    const linksSnapshot = await getDocs(linksCollection);
+    let linksQuery = linksCollection;
+
+    if (currentUser.email !== 'admin@gmail.com') {
+      linksQuery = query(linksCollection, where('userId', '==', currentUser.uid));
+    }
+
+    const linksSnapshot = await getDocs(linksQuery);
     const linksList = linksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     setLinks(linksList);
+
+    const imagesList = linksList
+      .filter(link => link.status === 'used' && link.images)
+      .flatMap(link => link.images.map(image => ({ url:image, linkId: link.id })));
+    setImages(imagesList);
   }, []);
 
   useEffect(() => {
@@ -114,7 +131,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
 
-    fetchLinks();
+    fetchLinksAndImages(user);
 
     const userRef = collection(db, 'users');
     const unsubscribeUsers = onSnapshot(userRef, (snapshot) => {
@@ -127,7 +144,7 @@ export default function Dashboard() {
     });
 
     return () => unsubscribeUsers();
-  }, [user, fetchLinks]);
+  }, [user, fetchLinksAndImages]);
 
   const generateLink = async () => {
     setError(null);
@@ -150,7 +167,7 @@ export default function Dashboard() {
         throw new Error(error || 'Failed to generate link');
       }
 
-      fetchLinks();
+      fetchLinksAndImages(user);
     } catch (error) {
       setError(error.message);
     }
@@ -165,6 +182,8 @@ export default function Dashboard() {
     return <p>Loading...</p>;
   }
 
+  const isAdmin = user && user.email === 'admin@gmail.com';
+
   return (
     <div style={{ padding: '20px' }}>
       <h1>Admin Dashboard</h1>
@@ -178,57 +197,90 @@ export default function Dashboard() {
       <button onClick={generateLink} style={{ padding: '10px', marginBottom: '20px', marginLeft: '10px' }}>Generate Link</button>
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
-      <CreateUserForm currentUser={user} />
+      {isAdmin && <CreateUserForm currentUser={user} />}
 
-      <h2 style={{ marginTop: '40px' }}>All Users</h2>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Email</th>
-            <th style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Tier</th>
-            <th style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Usage</th>
-          </tr>
-        </thead>
-        <tbody>
-          {allUsers.map(u => (
-            <tr key={u.userId}>
-              <td style={{ border: '1px solid #ccc', padding: '8px' }}>{u.email}</td>
-              <td style={{ border: '1px solid #ccc', padding: '8px' }}>{u.tier}</td>
-              <td style={{ border: '1px solid #ccc', padding: '8px' }}>{u.linksThisMonth}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {isAdmin && (
+        <>
+          <h2 style={{ marginTop: '40px' }}>All Users</h2>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Email</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Tier</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Usage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allUsers.map(u => (
+                <tr key={u.userId}>
+                  <td style={{ border: '1px solid #ccc', padding: '8px' }}>{u.email}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px' }}>{u.tier}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px' }}>{u.linksThisMonth}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
 
-      <h2>Generated Links</h2>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Link ID</th>
-            <th style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Status</th>
-            <th style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Link</th>
-          </tr>
-        </thead>
-        <tbody>
-          {links.map(link => (
-            <tr key={link.id}>
-              <td style={{ border: '1px solid #ccc', padding: '8px' }}>{link.id}</td>
-              <td style={{ border: '1px solid #ccc', padding: '8px' }}>{link.status}</td>
-              <td style={{ border: '1px solid #ccc', padding: '8px' }}><a href={`/upload/${link.id}`} target="_blank" rel="noopener noreferrer">{`/upload/${link.id}`}</a></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <h2>Uploaded Images</h2>
-      {links.filter(link => link.status === 'used').map(link => (
-        <div key={link.id} style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '10px' }}>
-          <h3>Link ID: {link.id}</h3>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            {link.images && link.images.map((image, index) => (
-              <img key={index} src={image} alt={`Uploaded image ${index + 1}`} style={{ maxWidth: '200px', maxHeight: '200px' }} />
-            ))}
+      <div style={{ marginTop: '40px' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid #ccc', marginBottom: '20px' }}>
+          <div
+            onClick={() => handleTabClick('links')}
+            style={{
+              padding: '10px 20px',
+              cursor: 'pointer',
+              borderBottom: activeTab === 'links' ? '2px solid blue' : 'none',
+              fontWeight: activeTab === 'links' ? 'bold' : 'normal',
+            }}
+          >
+            {isAdmin ? 'All Generated Links' : 'My Generated Links'}
+          </div>
+          <div
+            onClick={() => handleTabClick('images')}
+            style={{
+              padding: '10px 20px',
+              cursor: 'pointer',
+              borderBottom: activeTab === 'images' ? '2px solid blue' : 'none',
+              fontWeight: activeTab === 'images' ? 'bold' : 'normal',
+            }}
+          >
+            {isAdmin ? 'All Uploaded Images' : 'My Uploaded Images'}
           </div>
         </div>
-      ))}    </div>
+
+        {activeTab === 'links' && (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Link ID</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Status</th>
+                <th style={{ border: '1px solid #ccc', padding: '8px', textAlign: 'left' }}>Link</th>
+              </tr>
+            </thead>
+            <tbody>
+              {links.map(link => (
+                <tr key={link.id}>
+                  <td style={{ border: '1px solid #ccc', padding: '8px' }}>{link.id}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px' }}>{link.status}</td>
+                  <td style={{ border: '1px solid #ccc', padding: '8px' }}><a href={`/upload/${link.id}`} target="_blank" rel="noopener noreferrer">{`/upload/${link.id}`}</a></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {activeTab === 'images' && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
+            {images.map((image, index) => (
+              <div key={index} style={{ border: '1px solid #ccc', padding: '10px', borderRadius: '5px' }}>
+                <img src={image.url} alt={`Uploaded image ${index + 1}`} style={{ maxWidth: '200px', maxHeight: '200px' }} />
+                <p>Link ID: {image.linkId}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -25,7 +25,7 @@ export default function AdminLogin() {
 
   return (
     <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '5px' }}>
-      <h1>Admin Login</h1>
+      <h1>Login</h1>
       <form onSubmit={handleLogin}>
         <div style={{ marginBottom: '10px' }}>
           <label htmlFor="email">Email</label>
